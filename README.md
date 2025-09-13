@@ -1,5 +1,5 @@
 WeightAlpha — Frequency-Dependent VST3 Plugin for Mixing & Mastering
-
+![WeightAlpha]([https://github.com/WilliamAshley2019/WeightAlpha/WeightAlpha.png)]
 Modern GUI screenshot placeholder — replace with actual image.
 
 WeightAlpha is a VST3 audio plugin for mixing, mastering, and sound design, designed to add subtle or pronounced frequency-dependent
