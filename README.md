@@ -1,10 +1,13 @@
 WeightAlpha — Frequency-Dependent VST3 Plugin for Mixing & Mastering
-![WeightAlpha](https://github.com/WilliamAshley2019/WeightAlpha/blob/main/WeightAlpha.png)
 
 WeightAlpha is a VST3 audio plugin for mixing, mastering, and sound design, designed to add subtle or pronounced frequency-dependent
 tonal enhancement. Inspired by Chris Johnson’s Airwindows Weight plugin (https://www.airwindows.com/?s=weight), WeightAlpha extends its functionality with a polished GUI,
 new parameters, presets, and support for 32-bit & 64-bit double precision processing. The plugin is essentially just reworking Weight
 adding a few new things and some knobs for the gui. Its still a little unpolished but functionining.
+
+![WeightAlpha](https://github.com/WilliamAshley2019/WeightAlpha/blob/main/WeightAlpha.png)
+
+
 
 Built with JUCE 8.0.9 and the VST3 SDK, WeightAlpha should works in all major DAWs such as Reaper, Ableton Live, Logic Pro
 (via AU build), Cubase, and FL Studio. However it has only been tested in FL Studio in Windows 11.
@@ -128,3 +131,9 @@ If you would like to support my efforts in music content such as plugins or audi
 you think is good to share. Also you can donate at https://buymeacoffee.com/williamashley
 
 Also consider supporting Airwindows support at https://www.airwindows.com/support/
+
+
+Future to do list
+Fix the frequency band range I havn't tested it much but I think I did this wrong
+Improve the GUI a little  as the power / bypass functions not so sure if required 
+Change title of plugin name on this plugin to WeightAlpha rather than weight to avoid confusion with the authentic Airwindows plugin. 
