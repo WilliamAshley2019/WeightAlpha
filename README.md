@@ -134,6 +134,6 @@ Also consider supporting Airwindows support at https://www.airwindows.com/suppor
 
 
 Future to do list
-Fix the frequency band range I havn't tested it much but I think I did this wrong
-Improve the GUI a little  as the power / bypass functions not so sure if required and they are not symetic or aligned properly.  (Something for when I wake up though I think)
-Change title of plugin name on this plugin to WeightAlpha rather than weight to avoid confusion with the authentic Airwindows plugin. 
+Fix the frequency band range I havn't tested it much but I think I did this wrong 
+Improve the GUI a little to get better looking knobs   
+I think the narrowband and wideband need to be fixed for the full range I need to look at the processor logic more.
