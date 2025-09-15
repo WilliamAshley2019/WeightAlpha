@@ -1,7 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 
-// Custom parameter for flexible display and conversion
+// Custom parameter class for flexible display and conversion
 struct CustomParameter : public juce::AudioParameterFloat
 {
     CustomParameter(const juce::ParameterID& id, const juce::String& name,
@@ -51,12 +51,12 @@ namespace juce
     }
 }
 
-// WeightProcessor class
-class WeightProcessor : public juce::AudioProcessor
+// The main audio processor for the "Weight Alpha" plugin
+class WeightAlphaProcessor : public juce::AudioProcessor
 {
 public:
-    WeightProcessor();
-    ~WeightProcessor() override = default;
+    WeightAlphaProcessor();
+    ~WeightAlphaProcessor() override = default;
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -68,13 +68,13 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 
-    const juce::String getName() const override;
-    bool acceptsMidi() const override;
-    bool producesMidi() const override;
-    bool isMidiEffect() const override;
-    double getTailLengthSeconds() const override;
+    const juce::String getName() const override { return "Weight Alpha"; }
+    bool acceptsMidi() const override { return false; }
+    bool producesMidi() const override { return false; }
+    bool isMidiEffect() const override { return false; }
+    double getTailLengthSeconds() const override { return 0.0; }
 
-    int getNumPrograms() override;
+    int getNumPrograms() override { return 3; }
     int getCurrentProgram() override;
     void setCurrentProgram(int index) override;
     const juce::String getProgramName(int index) override;
@@ -104,8 +104,8 @@ private:
         void prepare()
         {
             juce::Random rng;
-            fpdL = rng.nextInt({ 16386, std::numeric_limits<int>::max() });
-            fpdR = rng.nextInt({ 16386, std::numeric_limits<int>::max() });
+            fpdL = static_cast<uint32_t>(rng.nextInt(juce::Range<int>(16386, std::numeric_limits<int>::max())));
+            fpdR = static_cast<uint32_t>(rng.nextInt(juce::Range<int>(16386, std::numeric_limits<int>::max())));
         }
     };
 
@@ -124,7 +124,7 @@ private:
     template<typename T>
     void processBlockT(juce::AudioBuffer<T>& buffer);
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WeightProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WeightAlphaProcessor)
 };
 
 // Factory function

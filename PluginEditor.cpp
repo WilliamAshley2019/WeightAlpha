@@ -1,136 +1,163 @@
 #include "PluginEditor.h"
+#include "PluginProcessor.h"
 
-WeightEditor::WeightEditor(WeightProcessor& p)
-    : AudioProcessorEditor(&p), audioProcessor(p)
+// WeightAlphaEditor implementation
+WeightAlphaEditor::WeightAlphaEditor(WeightAlphaProcessor& p)
+    : AudioProcessorEditor(&p), audioProcessor(p),
+    freqListener([this](float, float) { updateFrequencyDisplay(); })
 {
+    setOpaque(true); // Optimize rendering
+    setBufferedToImage(true); // Improve rendering stability
+
     setLookAndFeel(&lookAndFeel);
 
-    audioProcessor.getValueTree().addParameterListener("freq", this);
-    audioProcessor.getValueTree().addParameterListener("freqRange", this);
+    // Title Label
+    addAndMakeVisible(titleLabel);
+    titleLabel.setText("Weight Alpha", juce::dontSendNotification);
+    titleLabel.setFont(juce::Font(juce::FontOptions{}.withHeight(24.0f).withName("Inter").withStyle("Bold")));
+    titleLabel.setJustificationType(juce::Justification::centredLeft);
+    titleLabel.setVisible(true);
 
-    auto configureKnob = [&](juce::Slider& knob, juce::Label& label, const juce::String& text) {
-        addAndMakeVisible(knob);
-        knob.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-        knob.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-        knob.setPopupDisplayEnabled(true, true, this);
-        knob.setColour(juce::Slider::thumbColourId, juce::Colour(0xffe6e6e6));
-        knob.setColour(juce::Slider::rotarySliderFillColourId, juce::Colour(0xff6b85de));
-        knob.setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(0xff3f3f4e));
-
-        addAndMakeVisible(label);
-        label.setText(text, juce::dontSendNotification);
-        label.setFont(juce::Font(juce::FontOptions().withName("Arial").withHeight(16.0f).withStyle("Regular")));
-        label.setJustificationType(juce::Justification::centred);
-        label.setColour(juce::Label::textColourId, juce::Colours::white);
-        label.attachToComponent(&knob, false);
-        };
-
-    configureKnob(freqKnob, freqLabel, "Freq");
-    configureKnob(weightKnob, weightLabel, "Weight");
-    configureKnob(strengthKnob, strengthLabel, "Strength");
+    // Knobs and Labels
+    setupSlider(freqKnob, freqLabel, "Frequency");
+    setupSlider(weightKnob, weightLabel, "Weight");
+    setupSlider(strengthKnob, strengthLabel, "Strength");
 
     addAndMakeVisible(freqValueLabel);
+    freqValueLabel.setFont(juce::Font(juce::FontOptions{}.withHeight(14.0f).withName("Inter")));
     freqValueLabel.setJustificationType(juce::Justification::centred);
-    freqValueLabel.setFont(juce::Font(juce::FontOptions().withName("Arial").withHeight(14.0f).withStyle("Regular")));
-    updateFrequencyDisplay();
+    freqValueLabel.setVisible(true);
 
+    // Bypass Button
     addAndMakeVisible(bypassButton);
-    bypassButton.setButtonText("");
-    bypassButton.setColour(juce::ToggleButton::textColourId, juce::Colours::white);
-    bypassAttach = std::make_unique<ButtonAttachment>(p.getValueTree(), "bypass", bypassButton);
-
+    bypassButton.setName("Bypass");
+    bypassButton.setVisible(true);
     addAndMakeVisible(bypassLabel);
+    bypassLabel.setFont(juce::Font(juce::FontOptions{}.withHeight(14.0f).withName("Inter")));
     bypassLabel.setText("Bypass", juce::dontSendNotification);
-    bypassLabel.setFont(juce::Font(juce::FontOptions().withName("Arial").withHeight(14.0f).withStyle("Regular")));
-    bypassLabel.setJustificationType(juce::Justification::centred);
-    bypassLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     bypassLabel.attachToComponent(&bypassButton, false);
+    bypassLabel.setVisible(true);
 
+    // Frequency Range Button
     addAndMakeVisible(freqRangeButton);
     freqRangeButton.setButtonText("Narrow Range");
-    freqRangeButton.setColour(juce::ToggleButton::textColourId, juce::Colours::white);
-    freqRangeAttach = std::make_unique<ButtonAttachment>(p.getValueTree(), "freqRange", freqRangeButton);
+    freqRangeButton.setClickingTogglesState(true);
+    freqRangeButton.setVisible(true);
 
+    // Preset Selector
     addAndMakeVisible(presetSelector);
-    presetSelector.addItem("Default", 1);
-    presetSelector.addItem("Bass Boost", 2);
-    presetSelector.addItem("Vocal Warmth", 3);
+    presetSelector.addItemList({ "Default", "Bass Boost", "Vocal Warmth" }, 1);
     presetSelector.setSelectedId(1, juce::dontSendNotification);
-    presetAttach = std::make_unique<ComboBoxAttachment>(p.getValueTree(), "currentProgram", presetSelector);
+    presetSelector.setVisible(true);
 
-    freqAttach = std::make_unique<SliderAttachment>(p.getValueTree(), "freq", freqKnob);
-    weightAttach = std::make_unique<SliderAttachment>(p.getValueTree(), "weight", weightKnob);
-    strengthAttach = std::make_unique<SliderAttachment>(p.getValueTree(), "strength", strengthKnob);
+    // Parameter Attachments
+    auto& apvts = audioProcessor.getValueTree();
+    freqAttach = std::make_unique<SliderAttachment>(apvts, "freq", freqKnob);
+    weightAttach = std::make_unique<SliderAttachment>(apvts, "weight", weightKnob);
+    strengthAttach = std::make_unique<SliderAttachment>(apvts, "strength", strengthKnob);
+    bypassAttach = std::make_unique<ButtonAttachment>(apvts, "bypass", bypassButton);
+    freqRangeAttach = std::make_unique<ButtonAttachment>(apvts, "freqRange", freqRangeButton);
+    presetAttach = std::make_unique<ComboBoxAttachment>(apvts, "currentProgram", presetSelector);
+
+    // Attach listener to parameters
+    apvts.getParameter("freq")->addListener(&freqListener);
+    apvts.getParameter("freqRange")->addListener(&freqListener);
+    updateFrequencyDisplay();
 
     setResizable(true, true);
-    setResizeLimits(400, 300, 800, 600);
-    setSize(500, 350);
+    setResizeLimits(450, 280, 800, 600);
+    setSize(500, 300);
+
+    // Start the timer to update the UI
+    startTimerHz(30);
 }
 
-WeightEditor::~WeightEditor()
+WeightAlphaEditor::~WeightAlphaEditor()
 {
-    audioProcessor.getValueTree().removeParameterListener("freq", this);
-    audioProcessor.getValueTree().removeParameterListener("freqRange", this);
+    auto& apvts = audioProcessor.getValueTree();
+    apvts.getParameter("freq")->removeListener(&freqListener);
+    apvts.getParameter("freqRange")->removeListener(&freqListener);
     setLookAndFeel(nullptr);
 }
 
-void WeightEditor::paint(juce::Graphics& g)
+void WeightAlphaEditor::timerCallback()
 {
-    juce::ColourGradient gradient(juce::Colour(0xff1a1a24), 0, 0,
-        juce::Colour(0xff24242e), 0, getHeight(), false);
+    updateFrequencyDisplay();
+}
+
+void WeightAlphaEditor::setupSlider(juce::Slider& slider, juce::Label& label, const juce::String& text)
+{
+    addAndMakeVisible(slider);
+    slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    slider.setPopupDisplayEnabled(true, true, this);
+    slider.setVisible(true);
+
+    addAndMakeVisible(label);
+    label.setFont(juce::Font(juce::FontOptions{}.withHeight(15.0f).withName("Inter")));
+    label.setText(text, juce::dontSendNotification);
+    label.setJustificationType(juce::Justification::centred);
+    label.attachToComponent(&slider, false);
+    label.setVisible(true);
+}
+
+void WeightAlphaEditor::paint(juce::Graphics& g)
+{
+    juce::ColourGradient gradient(juce::Colour(0xff222731), getLocalBounds().getTopLeft().toFloat(),
+        juce::Colour(0xff1a1d24), getLocalBounds().getBottomLeft().toFloat(), false);
     g.setGradientFill(gradient);
     g.fillAll();
-
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::Font(juce::FontOptions().withName("Arial").withHeight(24.0f).withStyle("Bold")));
-    g.drawFittedText("Weight", getLocalBounds().removeFromTop(50), juce::Justification::centred, 1);
 }
 
-void WeightEditor::resized()
+void WeightAlphaEditor::resized()
 {
-    auto bounds = getLocalBounds();
-    bounds.removeFromTop(50);
-    bounds.removeFromBottom(30);
+    auto area = getLocalBounds().reduced(20);
+    juce::Logger::writeToLog("Total bounds: " + area.toString());
 
-    auto presetArea = bounds.removeFromBottom(30);
-    presetSelector.setBounds(presetArea.reduced(10, 5).withWidth(150));
+    // Header
+    auto headerArea = area.removeFromTop(40);
+    titleLabel.setBounds(headerArea.removeFromLeft(headerArea.getWidth() / 2));
+    presetSelector.setBounds(headerArea.withTrimmedLeft(headerArea.getWidth() / 2).reduced(10, 0));
+    juce::Logger::writeToLog("Title bounds: " + titleLabel.getBounds().toString());
+    juce::Logger::writeToLog("Preset selector bounds: " + presetSelector.getBounds().toString());
+    area.removeFromTop(20);
 
-    auto controlArea = bounds.reduced(20);
-    auto topRow = controlArea.removeFromTop(150);
-    auto bottomRow = controlArea;
+    // Main Knobs
+    auto knobArea = area.removeFromTop(120);
+    juce::Logger::writeToLog("Knob area: " + knobArea.toString());
 
-    juce::FlexBox freqBox;
-    freqBox.flexDirection = juce::FlexBox::Direction::column;
-    freqBox.items.add(juce::FlexItem(freqKnob).withMinWidth(80.0f).withMinHeight(80.0f).withFlex(1.0f));
-    freqBox.items.add(juce::FlexItem(freqValueLabel).withHeight(20.0f));
+    // Divide knob area into three columns for Frequency, Weight, and Strength
+    auto freqArea = knobArea.removeFromLeft(knobArea.getWidth() / 3).reduced(10);
+    freqKnob.setBounds(freqArea.removeFromTop(80));
+    freqValueLabel.setBounds(freqArea.removeFromTop(20));
+    freqLabel.setBounds(freqArea);
+    juce::Logger::writeToLog("Freq knob bounds: " + freqKnob.getBounds().toString());
+    juce::Logger::writeToLog("Freq value label bounds: " + freqValueLabel.getBounds().toString());
+    juce::Logger::writeToLog("Freq label bounds: " + freqLabel.getBounds().toString());
 
-    juce::FlexBox knobBox;
-    knobBox.flexDirection = juce::FlexBox::Direction::row;
-    knobBox.justifyContent = juce::FlexBox::JustifyContent::spaceAround;
-    knobBox.alignItems = juce::FlexBox::AlignItems::center;
-    knobBox.items.add(juce::FlexItem(freqBox).withMinWidth(100.0f).withFlex(1.0f).withMargin(10));
-    knobBox.items.add(juce::FlexItem(weightKnob).withMinWidth(80.0f).withMinHeight(80.0f).withFlex(1.0f).withMargin(10));
-    knobBox.items.add(juce::FlexItem(strengthKnob).withMinWidth(80.0f).withMinHeight(80.0f).withFlex(1.0f).withMargin(10));
+    auto weightArea = knobArea.removeFromLeft(knobArea.getWidth() / 2).reduced(10);
+    weightKnob.setBounds(weightArea.removeFromTop(80));
+    weightLabel.setBounds(weightArea);
+    juce::Logger::writeToLog("Weight knob bounds: " + weightKnob.getBounds().toString());
+    juce::Logger::writeToLog("Weight label bounds: " + weightLabel.getBounds().toString());
 
-    knobBox.performLayout(topRow);
+    auto strengthArea = knobArea.reduced(10);
+    strengthKnob.setBounds(strengthArea.removeFromTop(80));
+    strengthLabel.setBounds(strengthArea);
+    juce::Logger::writeToLog("Strength knob bounds: " + strengthKnob.getBounds().toString());
+    juce::Logger::writeToLog("Strength label bounds: " + strengthLabel.getBounds().toString());
 
-    juce::FlexBox bottomBox;
-    bottomBox.flexDirection = juce::FlexBox::Direction::row;
-    bottomBox.justifyContent = juce::FlexBox::JustifyContent::spaceAround;
-    bottomBox.alignItems = juce::FlexBox::AlignItems::center;
-    bottomBox.items.add(juce::FlexItem(bypassButton).withWidth(40.0f).withHeight(40.0f).withMargin(10));
-    bottomBox.items.add(juce::FlexItem(freqRangeButton).withWidth(100.0f).withHeight(30.0f).withMargin(10));
+    area.removeFromTop(10);
 
-    bottomBox.performLayout(bottomRow);
+    // Bottom Controls
+    auto bottomArea = area;
+    bypassButton.setBounds(bottomArea.removeFromLeft(40).withHeight(40));
+    freqRangeButton.setBounds(bottomArea.removeFromRight(120).withHeight(40));
+    juce::Logger::writeToLog("Bypass button bounds: " + bypassButton.getBounds().toString());
+    juce::Logger::writeToLog("Freq range button bounds: " + freqRangeButton.getBounds().toString());
 }
 
-void WeightEditor::parameterChanged(const juce::String& parameterID, float)
-{
-    if (parameterID == "freq" || parameterID == "freqRange")
-        updateFrequencyDisplay();
-}
-
-void WeightEditor::updateFrequencyDisplay()
+void WeightAlphaEditor::updateFrequencyDisplay()
 {
     bool narrowRange = audioProcessor.getValueTree().getParameter("freqRange")->getValue() > 0.5f;
     float freqVal = audioProcessor.getValueTree().getParameter("freq")->getValue();
@@ -142,5 +169,6 @@ void WeightEditor::updateFrequencyDisplay()
     else
         freqText = juce::String(static_cast<int>(freqHz + 0.5f)) + " Hz";
 
-    freqValueLabel.setText(freqText, juce::dontSendNotification);
+    if (freqValueLabel.getText() != freqText)
+        freqValueLabel.setText(freqText, juce::dontSendNotification);
 }

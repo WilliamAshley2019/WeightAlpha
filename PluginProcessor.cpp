@@ -1,14 +1,14 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-// WeightProcessor implementation
-WeightProcessor::WeightProcessor()
+// WeightAlphaProcessor implementation
+WeightAlphaProcessor::WeightAlphaProcessor()
     : AudioProcessor(BusesProperties()
         .withInput("Input", juce::AudioChannelSet::stereo(), true)
         .withOutput("Output", juce::AudioChannelSet::stereo(), true))
     , apvts(*this, nullptr, "Parameters", createParameterLayout())
 {
-    apvts.state.setProperty("currentProgram", 0, nullptr); // Initialize preset index
+    apvts.state.setProperty("currentProgram", 0, nullptr);
     freqParamPtr = apvts.getRawParameterValue("freq");
     weightParamPtr = apvts.getRawParameterValue("weight");
     strengthParamPtr = apvts.getRawParameterValue("strength");
@@ -16,7 +16,7 @@ WeightProcessor::WeightProcessor()
     freqRangeParamPtr = apvts.getRawParameterValue("freqRange");
 }
 
-juce::AudioProcessorValueTreeState::ParameterLayout WeightProcessor::createParameterLayout()
+juce::AudioProcessorValueTreeState::ParameterLayout WeightAlphaProcessor::createParameterLayout()
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
     params.push_back(std::make_unique<CustomParameter>(
@@ -40,13 +40,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout WeightProcessor::createParam
     return { params.begin(), params.end() };
 }
 
-void WeightProcessor::prepareToPlay(double, int)
+void WeightAlphaProcessor::prepareToPlay(double, int)
 {
     precisionProcessingFloat.prepare();
     precisionProcessingDouble.prepare();
 }
 
-bool WeightProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
+bool WeightAlphaProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
         && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
@@ -59,7 +59,7 @@ bool WeightProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 }
 
 template<typename T>
-void WeightProcessor::processBlockT(juce::AudioBuffer<T>& buffer)
+void WeightAlphaProcessor::processBlockT(juce::AudioBuffer<T>& buffer)
 {
     juce::ScopedNoDenormals noDenormals;
 
@@ -127,25 +127,27 @@ void WeightProcessor::processBlockT(juce::AudioBuffer<T>& buffer)
     }
 }
 
-void WeightProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& /*midi*/)
+void WeightAlphaProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     processBlockT(buffer);
 }
 
-void WeightProcessor::processBlock(juce::AudioBuffer<double>& buffer, juce::MidiBuffer& /*midi*/)
+void WeightAlphaProcessor::processBlock(juce::AudioBuffer<double>& buffer, juce::MidiBuffer&)
 {
     processBlockT(buffer);
 }
 
-const juce::String WeightProcessor::getName() const { return "Weight"; }
-bool WeightProcessor::acceptsMidi() const { return false; }
-bool WeightProcessor::producesMidi() const { return false; }
-bool WeightProcessor::isMidiEffect() const { return false; }
-double WeightProcessor::getTailLengthSeconds() const { return 0.0; }
+juce::AudioProcessorEditor* WeightAlphaProcessor::createEditor()
+{
+    return new WeightAlphaEditor(*this);
+}
 
-int WeightProcessor::getNumPrograms() { return 3; }
-int WeightProcessor::getCurrentProgram() { return apvts.state.getProperty("currentProgram", 0); }
-void WeightProcessor::setCurrentProgram(int index)
+int WeightAlphaProcessor::getCurrentProgram()
+{
+    return apvts.state.getProperty("currentProgram", 0);
+}
+
+void WeightAlphaProcessor::setCurrentProgram(int index)
 {
     juce::ValueTree state = apvts.copyState();
     state.setProperty("currentProgram", index, nullptr);
@@ -176,7 +178,7 @@ void WeightProcessor::setCurrentProgram(int index)
     apvts.replaceState(state);
 }
 
-const juce::String WeightProcessor::getProgramName(int index)
+const juce::String WeightAlphaProcessor::getProgramName(int index)
 {
     switch (index)
     {
@@ -187,16 +189,19 @@ const juce::String WeightProcessor::getProgramName(int index)
     }
 }
 
-void WeightProcessor::changeProgramName(int, const juce::String&) {}
+void WeightAlphaProcessor::changeProgramName(int index, const juce::String& newName)
+{
+    juce::ignoreUnused(index, newName);
+}
 
-void WeightProcessor::getStateInformation(juce::MemoryBlock& destData)
+void WeightAlphaProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
     copyXmlToBinary(*xml, destData);
 }
 
-void WeightProcessor::setStateInformation(const void* data, int sizeInBytes)
+void WeightAlphaProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
     std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
     if (xmlState && xmlState->hasTagName(apvts.state.getType()))
@@ -205,10 +210,5 @@ void WeightProcessor::setStateInformation(const void* data, int sizeInBytes)
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new WeightProcessor();
-}
-
-juce::AudioProcessorEditor* WeightProcessor::createEditor()
-{
-    return new WeightEditor(*this);
+    return new WeightAlphaProcessor();
 }
